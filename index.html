@@ -654,6 +654,8 @@ function drawAccounts(){
 
 /* ---------- sync (Supabase) ---------- */
 const CFG=window.APP_CONFIG||{};
+try{if(CFG.supabaseUrl)CFG.supabaseUrl=new URL(String(CFG.supabaseUrl).trim()).origin}catch(e){}
+if(CFG.supabaseKey)CFG.supabaseKey=String(CFG.supabaseKey).trim();
 const SYNC={sb:null,session:null,configured:!!(CFG.supabaseUrl&&CFG.supabaseKey&&window.supabase),ready:false,needSetup:false,offline:false,flushing:false,dirty:false,err:'',base:{},seen:null,started:false,deferred:false,timer:null,ft:null,retry:null};
 const LS_BASE='familyBudget.base.v1',LS_SEEN='familyBudget.seen.v1',LS_SYNCED='familyBudget.synced.v1';
 const SET_KEYS=['v','sample','people','strategy','extra','tips','budget','history','acctHistory','lastSnap'];
