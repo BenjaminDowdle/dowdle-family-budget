@@ -156,6 +156,7 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
     <div class="field"><label for="lEmail">Email</label><input id="lEmail" type="email" autocomplete="username" required></div>
     <div class="field"><label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password" required></div>
     <div class="msg" id="lMsg" role="alert"></div>
+    <div class="small muted" id="lHost" style="overflow-wrap:anywhere"></div>
     <button class="btn primary" type="submit" id="lBtn">Sign in</button>
   </form>
 </div>
@@ -817,7 +818,7 @@ async function doLogin(){
     const {data,error}=await SYNC.sb.auth.signInWithPassword({email:$('#lEmail').value.trim(),password:$('#lPass').value});
     if(error)throw error;
     SYNC.session=data.session;$('#lPass').value='';showLogin(false);SYNC.started=false;await startSync();render();
-  }catch(e){msg.textContent=(e&&e.message)?(/invalid/i.test(e.message)?'That email or password is not right.':e.message):'Could not sign in. Check your connection.'}
+  }catch(e){const m=(e&&e.message)||'';msg.textContent=(e&&e.code==='invalid_credentials')||/invalid login credentials/i.test(m)?'Supabase says the email or password does not match a user in this project.':(m?'Sign-in failed: '+m+(e.status?' (status '+e.status+')':''):'Could not sign in. Check your connection.')}
   btn.disabled=false;
 }
 async function signOut(){
@@ -829,6 +830,7 @@ async function initSync(){
   if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
   SYNC.configured=!!(CFG.supabaseUrl&&CFG.supabaseKey&&window.supabase);
   if(!SYNC.configured){setStatus();render();return}
+  try{$('#lHost').textContent='Connected to '+new URL(CFG.supabaseUrl).hostname}catch(e){$('#lHost').textContent='Supabase URL in config.js looks wrong'}
   SYNC.sb=supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
   SYNC.sb.auth.onAuthStateChange((ev,sess)=>{SYNC.session=sess||null;if(ev==='SIGNED_OUT')showLogin(true)});
   if(!hasStored())showLogin(true);
