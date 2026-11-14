@@ -243,11 +243,12 @@ const SAVE_TYPES=['Savings','Money market','CD','Retirement','Brokerage','HSA'];
 function isSavingsTo(x){const to=(S.accounts||[]).find(a=>a.id===x.to),fr=(S.accounts||[]).find(a=>a.id===x.acct);
   return !!(to&&SAVE_TYPES.includes(to.type)&&!(fr&&SAVE_TYPES.includes(fr.type)))}
 const tp=()=>S.budget&&S.budget.tithePct!=null?S.budget.tithePct:10;
-const tithe=st=>Math.round((st.inc>0?st.inc:(S.budget.income||0))*tp())/100;
+const tithe=st=>Math.round((st.pay>0?st.pay:(S.budget.income||0))*tp())/100;
 function monthStats(mk){
   const t=S.tx.filter(x=>inMonth(x,mk));
   const inc=sum(t.filter(x=>x.type==='income'),x=>x.amount);
   const exp=sum(t.filter(x=>x.type==='expense'),x=>x.amount);
+  const pay=sum(t.filter(x=>x.type==='income'&&x.cat==='Paycheck'),x=>x.amount);
   let dueBills=0,dueDebt=0;
   if(mk===MK){
     dueBills=sum(S.bills.filter(b=>!t.some(x=>x.billId===b.id)),b=>b.amount);
@@ -255,7 +256,7 @@ function monthStats(mk){
   }
   const cats={};t.filter(x=>x.type==='expense').forEach(x=>cats[x.cat]=(cats[x.cat]||0)+x.amount);
   t.filter(x=>x.type==='transfer'&&isSavingsTo(x)).forEach(x=>cats['Savings']=(cats['Savings']||0)+x.amount);
-  return {inc,exp,dueBills,dueDebt,due:dueBills+dueDebt,left:inc-exp,safe:inc-exp-dueBills-dueDebt,cats,t};
+  return {inc,pay,exp,dueBills,dueDebt,due:dueBills+dueDebt,left:inc-exp,safe:inc-exp-dueBills-dueDebt,cats,t};
 }
 function simulate(debts,extra,strat){
   const ds=debts.filter(d=>d.balance>0).map(d=>({id:d.id,b:d.balance,r:d.apr/1200,min:d.min}));
@@ -597,7 +598,7 @@ function vBudget(){
    <div class="seg wrap" role="group" aria-label="Starting point">${PRESETS.map(p=>`<button data-act="preset" data-p="${p[0]}" aria-pressed="${B.preset===p[0]}">${p[1]}</button>`).join('')}</div>
    <p class="small muted" style="margin:8px 0 0">${preset?esc(preset[2])+' Picking one replaces your current limits.':'Custom limits. Pick a starting point above to start over.'}</p></section>
   ${GROUPS.map(([name,cats])=>{const tl=sum(cats,c=>catInfo(c,st).limit),ts=sum(cats,c=>st.cats[c]||0);
-   return `<section class="card"><header><h2>${name}</h2><span class="muted small num">${usd(ts)} spent of ${usd(tl)}</span></header>${cats.map(row).join('')}${name==='Giving'?`<div class="small muted" style="padding-top:8px;border-top:1px solid var(--line)">${st.inc>0?`${tp()}% of the ${usd2(st.inc)} of income you logged in ${esc(mLabel(M,true))}.`:`No income logged for ${esc(mLabel(M,true))} yet, so this uses your planned income of ${usd(B.income)}.`} Given so far this year: <b class="num">${usd2(sum(S.tx.filter(x=>x.type==='expense'&&x.cat==='Donations'&&x.date.slice(0,4)===M.slice(0,4)),x=>x.amount))}</b></div>`:''}${name==='Debt and savings'&&Math.abs(impl-S.extra)>=5&&S.debts.some(d=>d.balance>0)?`<div class="small muted" style="padding-top:8px;border-top:1px solid var(--line)">Your debt limit is ${usd(impl)} above minimums, but the Debts tab plans with ${usd(S.extra)} extra. <button class="btn" data-act="useextra">Use ${usd(impl)} as extra</button></div>`:''}</section>`}).join('')}
+   return `<section class="card"><header><h2>${name}</h2><span class="muted small num">${usd(ts)} spent of ${usd(tl)}</span></header>${cats.map(row).join('')}${name==='Giving'?`<div class="small muted" style="padding-top:8px;border-top:1px solid var(--line)">${st.pay>0?`${tp()}% of the ${usd2(st.pay)} of paychecks you logged in ${esc(mLabel(M,true))}. Other income is not counted.`:`No paychecks logged for ${esc(mLabel(M,true))} yet, so this uses your planned income of ${usd(B.income)}.`} Given so far this year: <b class="num">${usd2(sum(S.tx.filter(x=>x.type==='expense'&&x.cat==='Donations'&&x.date.slice(0,4)===M.slice(0,4)),x=>x.amount))}</b></div>`:''}${name==='Debt and savings'&&Math.abs(impl-S.extra)>=5&&S.debts.some(d=>d.balance>0)?`<div class="small muted" style="padding-top:8px;border-top:1px solid var(--line)">Your debt limit is ${usd(impl)} above minimums, but the Debts tab plans with ${usd(S.extra)} extra. <button class="btn" data-act="useextra">Use ${usd(impl)} as extra</button></div>`:''}</section>`}).join('')}
   </div>`;
 }
 
