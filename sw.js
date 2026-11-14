@@ -1,5 +1,5 @@
 // Keeps the app available offline. Bump VERSION when you replace the files so phones pick up the update.
-const VERSION = 'budget-v2';
+const VERSION = 'budget-v3';
 const SHELL = ['./', 'index.html', 'config.js', 'supabase.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
