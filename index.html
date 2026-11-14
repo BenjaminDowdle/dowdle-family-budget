@@ -126,7 +126,7 @@ textarea{width:100%;min-height:110px;background:var(--surface);border:1px solid 
 .seg.wrap{flex-wrap:wrap}
 @media(max-width:560px){.brow{grid-template-columns:minmax(0,1fr) auto}.brow .bmain{grid-column:1/-1}.brow .step{justify-self:end}.brow.lite{grid-template-columns:minmax(0,1fr) auto}.brow.lite .bmain{grid-column:auto}}
 input[type=checkbox]{width:auto;accent-color:var(--accent)}
-.row.acct{flex-wrap:wrap;gap:8px 12px}.acct .grow{flex:1 1 200px}
+.row.acct{flex-wrap:wrap;gap:8px 12px}.row.bill{flex-wrap:wrap;gap:8px 12px}.bill .grow{flex:1 1 180px}.row select.bsel{width:auto;max-width:170px;flex:0 1 170px}.acct .grow{flex:1 1 200px}
 .check{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
 .hright{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .banner b{color:var(--ink)}.banner .btn{margin:8px 8px 0 0}
@@ -468,7 +468,7 @@ function vBills(){
   <section class="card"><header><h2>Monthly bills</h2><span class="muted small num">${paid.length} of ${S.bills.length} paid · ${usd(paidT)} of ${usd(totalB)}</span></header>
    <div class="bar" style="margin-bottom:6px"><i style="width:${totalB?paidT/totalB*100:0}%"></i></div>
    ${S.bills.length?S.bills.slice().sort((a,b)=>a.day-b.day).map(b=>{const pd=billPaid(b,M);const late=!pd&&M===MK&&b.day<dd;
-    return `<div class="row"><div class="grow"><div><b>${esc(b.name)}</b> ${pd?'<span class="pill good">Paid</span>':late?'<span class="pill bad">Overdue</span>':'<span class="pill">Due</span>'}</div><div class="small muted">Due on the ${b.day}${['th','st','nd','rd'][b.day%10>3||Math.floor(b.day/10)===1?0:b.day%10]} · ${esc(b.cat)}</div></div><span class="num">${usd2(b.amount)}</span>${(S.accounts||[]).length?`<select data-bacct="${b.id}" aria-label="Pay ${esc(b.name)} from">${'<option value="">No account</option>'+S.accounts.map(a=>`<option value="${a.id}"${b.acct===a.id?' selected':''}>${esc(acctLabel(a))}</option>`).join('')}</select>`:''}<button class="btn" data-act="togglebill" data-id="${b.id}">${pd?'Undo':'Mark paid'}</button><button class="btn ghost danger" data-act="delbill" data-id="${b.id}" aria-label="Delete bill">Delete</button></div>`}).join(''):'<div class="empty">No bills yet. Add rent or mortgage, utilities, insurance, and subscriptions below.</div>'}
+    return `<div class="row bill"><div class="grow"><div><b>${esc(b.name)}</b> ${pd?'<span class="pill good">Paid</span>':late?'<span class="pill bad">Overdue</span>':'<span class="pill">Due</span>'}</div><div class="small muted">Due on the ${b.day}${['th','st','nd','rd'][b.day%10>3||Math.floor(b.day/10)===1?0:b.day%10]} · ${esc(b.cat)}</div></div><span class="num">${usd2(b.amount)}</span>${(S.accounts||[]).length?`<select class="bsel" data-bacct="${b.id}" aria-label="Pay ${esc(b.name)} from">${'<option value="">No account</option>'+S.accounts.map(a=>`<option value="${a.id}"${b.acct===a.id?' selected':''}>${esc(acctLabel(a))}</option>`).join('')}</select>`:''}<button class="btn" data-act="togglebill" data-id="${b.id}">${pd?'Undo':'Mark paid'}</button><button class="btn ghost danger" data-act="delbill" data-id="${b.id}" aria-label="Delete bill">Delete</button></div>`}).join(''):'<div class="empty">No bills yet. Add rent or mortgage, utilities, insurance, and subscriptions below.</div>'}
   </section>
   <section class="card"><header><h2>Add a bill</h2></header><form class="inline" id="billForm">
     <div class="field w-l"><label for="bName">Name</label><input id="bName" required placeholder="Water"></div>
