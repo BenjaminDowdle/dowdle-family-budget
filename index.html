@@ -427,16 +427,28 @@ function drawOverview(){
   barChart($('#flowChart'),{groups,colors:['var(--s3)','var(--s2)'],names:['Income','Spending'],aria:'Income and spending by month'});
   $('#flowTable').innerHTML=table(['Month','Income','Spending','Left'],groups.map(g=>[g.full,usd(g.vals[0]),usd(g.vals[1]),usd(g.vals[0]-g.vals[1])]));
 }
+let VIEW='';try{VIEW=localStorage.getItem('familyBudget.view')||''}catch(e){}
+const acctOwnerOf=id=>{const a=(S.accounts||[]).find(x=>x.id===id);return a?a.owner:null};
+function txInView(x){if(!VIEW)return true;
+  const o=[acctOwnerOf(x.acct),x.type==='transfer'?acctOwnerOf(x.to):null].filter(v=>v!=null);
+  if(o.length)return o.includes(VIEW);
+  return VIEW==='J'?x.who==='Both':x.who===S.people[+VIEW];}
+const billInView=b=>!VIEW||acctOwnerOf(b.acct)===VIEW;
+function viewBar(note){
+  const opts=[['','Everyone'],['0',S.people[0]],['1',S.people[1]],['J','Joint']];
+  return `<div class="span2"><div class="seg wrap" role="group" aria-label="Show">${opts.map(o=>`<button data-act="setview" data-v="${o[0]}" aria-pressed="${VIEW===o[0]}">${esc(o[1])}</button>`).join('')}</div>${VIEW&&note?`<p class="small muted" style="margin:8px 0 0">${note}</p>`:''}</div>`;
+}
 let editId=null,lastAcct='';
 const acctLabel=a=>`${a.name} · ${ownerName(a.owner)}`;
 function vMoney(){
-  const st=monthStats(M);const list=st.t.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const st=monthStats(M);const list=st.t.filter(txInView).sort((a,b)=>b.date.localeCompare(a.date));
+  const inSum=sum(list.filter(x=>x.type==='income'),x=>x.amount),outSum=sum(list.filter(x=>x.type==='expense'),x=>x.amount);
   const et=editId?S.tx.find(x=>x.id===editId):null;if(editId&&!et)editId=null;
   if(et)txType=et.type;
   const T=txType,tr=T==='transfer',acc=S.accounts||[];
   const defDate=et?et.date:M===MK?TODAY:M+'-01';
   const sel=(v,x)=>v===x?' selected':'';
-  const aopt=(v,none)=>(none?`<option value="">${none}</option>`:'')+acc.map(a=>`<option value="${a.id}"${sel(v,a.id)}>${esc(acctLabel(a))}</option>`).join('');
+  const aopt=(v,none,all)=>(none?`<option value="">${none}</option>`:'')+acc.filter(a=>all||!VIEW||a.owner===VIEW||a.id===v).map(a=>`<option value="${a.id}"${sel(v,a.id)}>${esc(acctLabel(a))}</option>`).join('');
   const curAcct=et?et.acct||'':lastAcct;
   const cats=(T==='income'?INC_CATS:EXP_CATS).map(c=>`<option${sel(et?et.cat:'',c)}>${c}</option>`).join('');
   const aname=id=>{const a=acc.find(x=>x.id===id);return a?a.name:''};
@@ -444,12 +456,13 @@ function vMoney(){
     const where=tr?`${esc(aname(t.acct)||'?')} → ${esc(aname(t.to)||'?')}`:`${esc(t.cat)} · ${esc(t.who)}${t.acct&&aname(t.acct)?' · '+esc(aname(t.acct)):''}`;
     return `<div class="row"><div class="grow"><div><b>${esc(t.note||t.cat)}</b>${tr?' <span class="pill">Transfer</span>':''}</div><div class="small muted">${dayLabel(t.date)} · ${where}</div></div><span class="num ${t.type==='income'?'pos':''}">${t.type==='income'?'+':''}${usd2(t.amount)}</span><button class="btn ghost" data-act="edittx" data-id="${t.id}" aria-label="Edit transaction">Edit</button><button class="btn ghost danger" data-act="deltx" data-id="${t.id}" aria-label="Delete transaction">Delete</button></div>`};
   return `<div class="grid">
+  ${viewBar('Showing only entries on '+esc(VIEW==='J'?'joint':ownerName(VIEW))+' accounts. Entries with no account are matched by the Who field. The Budget and Overview tabs still cover the whole household.')}
   <section class="card"><header><h2>${et?'Edit transaction':'Add a transaction'}</h2></header>
    <form class="inline" id="txForm">
     <div class="seg" role="group" aria-label="Type"><button type="button" id="tExp" aria-pressed="${T==='expense'}" data-act="ttype" data-t="expense">Expense</button><button type="button" id="tInc" aria-pressed="${T==='income'}" data-act="ttype" data-t="income">Income</button><button type="button" id="tTr" aria-pressed="${tr}" data-act="ttype" data-t="transfer">Transfer</button></div>
     <div class="field w-s"><label for="txAmt">Amount</label><input id="txAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="${et?et.amount:''}" required></div>
     <div class="field w-l" id="fAcct"><label for="txAcct" id="lblAcct">${tr?'From account':'Account'}</label><select id="txAcct">${aopt(curAcct,tr?'':'No account')}</select></div>
-    <div class="field w-l" id="fTo" style="${tr?'':'display:none'}"><label for="txTo">To account</label><select id="txTo">${aopt(et&&et.to||'', '')}</select></div>
+    <div class="field w-l" id="fTo" style="${tr?'':'display:none'}"><label for="txTo">To account</label><select id="txTo">${aopt(et&&et.to||'','',true)}</select></div>
     <div class="field w-m" id="fCat" style="${tr?'display:none':''}"><label for="txCat">Category</label><select id="txCat">${cats}</select></div>
     <div class="field w-m" id="fWho" style="${tr?'display:none':''}"><label for="txWho">Who</label><select id="txWho">${S.people.concat(['Both']).map(p=>`<option${sel(et?et.who:'',p)}>${esc(p)}</option>`).join('')}</select></div>
     <div class="field w-m"><label for="txDate">Date</label><input id="txDate" type="date" value="${defDate}"></div>
@@ -457,18 +470,20 @@ function vMoney(){
     <button class="btn primary" type="submit">${et?'Save':'Add'}</button>${et?'<button class="btn" type="button" data-act="canceledit">Cancel</button>':''}
    </form><div class="small neg" id="txMsg" role="alert"></div>
    ${acc.length?'':'<p class="small muted" style="margin:8px 0 0">Add accounts in the Accounts tab to pick one here and have its balance update.</p>'}</section>
-  <section class="card"><header><h2>${esc(mLabel(M,true))}</h2><span class="muted small num">${list.length} transactions</span></header>
+  <section class="card"><header><h2>${esc(mLabel(M,true))}</h2><span class="muted small num">${list.length} transactions${VIEW?` · in ${usd2(inSum)} · out ${usd2(outSum)}`:''}</span></header>
    ${list.length?list.map(rowTx).join(''):'<div class="empty">Nothing logged this month yet. Add the first transaction above.</div>'}
   </section></div>`;
 }
 const billPaid=(b,mk)=>S.tx.some(x=>x.billId===b.id&&inMonth(x,mk));
 function vBills(){
-  const paid=S.bills.filter(b=>billPaid(b,M)),totalB=sum(S.bills,b=>b.amount),paidT=sum(paid,b=>b.amount);
+  const BL=S.bills.filter(billInView),hid=S.bills.length-BL.length;
+  const paid=BL.filter(b=>billPaid(b,M)),totalB=sum(BL,b=>b.amount),paidT=sum(paid,b=>b.amount);
   const dd=+TODAY.slice(8);
   return `<div class="grid">
-  <section class="card"><header><h2>Monthly bills</h2><span class="muted small num">${paid.length} of ${S.bills.length} paid · ${usd(paidT)} of ${usd(totalB)}</span></header>
+  ${viewBar(`Showing bills paid from ${esc(VIEW==='J'?'joint':ownerName(VIEW))} accounts.${hid?` ${hid} other bill${hid===1?'':'s'} hidden.`:''}`)}
+  <section class="card"><header><h2>Monthly bills</h2><span class="muted small num">${paid.length} of ${BL.length} paid · ${usd(paidT)} of ${usd(totalB)}</span></header>
    <div class="bar" style="margin-bottom:6px"><i style="width:${totalB?paidT/totalB*100:0}%"></i></div>
-   ${S.bills.length?S.bills.slice().sort((a,b)=>a.day-b.day).map(b=>{const pd=billPaid(b,M);const late=!pd&&M===MK&&b.day<dd;
+   ${BL.length?BL.slice().sort((a,b)=>a.day-b.day).map(b=>{const pd=billPaid(b,M);const late=!pd&&M===MK&&b.day<dd;
     return `<div class="row bill"><div class="grow"><div><b>${esc(b.name)}</b> ${pd?'<span class="pill good">Paid</span>':late?'<span class="pill bad">Overdue</span>':'<span class="pill">Due</span>'}</div><div class="small muted">Due on the ${b.day}${['th','st','nd','rd'][b.day%10>3||Math.floor(b.day/10)===1?0:b.day%10]} · ${esc(b.cat)}</div></div><span class="num">${usd2(b.amount)}</span>${(S.accounts||[]).length?`<select class="bsel" data-bacct="${b.id}" aria-label="Pay ${esc(b.name)} from">${'<option value="">No account</option>'+S.accounts.map(a=>`<option value="${a.id}"${b.acct===a.id?' selected':''}>${esc(acctLabel(a))}</option>`).join('')}</select>`:''}<button class="btn" data-act="togglebill" data-id="${b.id}">${pd?'Undo':'Mark paid'}</button><button class="btn ghost danger" data-act="delbill" data-id="${b.id}" aria-label="Delete bill">Delete</button></div>`}).join(''):'<div class="empty">No bills yet. Add rent or mortgage, utilities, insurance, and subscriptions below.</div>'}
   </section>
   <section class="card"><header><h2>Add a bill</h2></header><form class="inline" id="billForm">
@@ -644,7 +659,8 @@ function snapshot(){
   S.lastSnap={m:MK,assets:assetsTotal(),debt:totalDebt(),cards:cardsOwed()};
 }
 function vAccounts(){
-  const A=assetsTotal(),D=liabTotal(),acc=S.accounts;
+  const acc=S.accounts.filter(a=>!VIEW||a.owner===VIEW);
+  const A=sum(acc.filter(a=>kindOf(a.type)!=='card'),bal),D=(VIEW?0:totalDebt())+sum(acc.filter(a=>kindOf(a.type)==='card'),bal);
   const cash=sum(acc.filter(a=>kindOf(a.type)==='cash'),bal),inv=A-cash,nw=A-D;
   const earn=sum(acc.filter(a=>kindOf(a.type)!=='card'),a=>bal(a)*(a.apr||0)/1200);
   const owners=['0','1','J'].map(k=>[ownerName(k),sum(acc.filter(a=>a.owner===k&&kindOf(a.type)!=='card'),bal)]);const omax=Math.max(1,...owners.map(o=>o[1]));
@@ -656,9 +672,10 @@ function vAccounts(){
       <button class="btn ghost danger" data-act="delacct" data-id="${a.id}" aria-label="Delete ${esc(a.name)}">Delete</button></div>`};
   const grp=(title,kind)=>{const l=acc.filter(a=>kindOf(a.type)===kind);return `<section class="card"><header><h2>${title}</h2><span class="muted small num">${usd(sum(l,bal))}${kind==='card'?' owed':''}</span></header>${l.length?l.map(row).join(''):'<div class="empty">Nothing here yet.</div>'}</section>`};
   return `<div class="grid two">
+  ${viewBar('Showing '+esc(VIEW==='J'?'joint':ownerName(VIEW))+' accounts only. Debts from the Debts tab are not owned by anyone, so they are left out here.')}
   <section class="card span2"><div class="hero"><div><div class="label">Net worth</div><div class="big num ${nw<0?'neg':''}">${usd(nw)}</div><div class="small muted">What you own, minus what you owe</div></div>
    <div class="stats"><div><span class="label">Cash on hand</span><b class="num">${usd(cash)}</b></div><div><span class="label">Retirement and investing</span><b class="num">${usd(inv)}</b></div><div><span class="label">Debt</span><b class="num">${usd(D)}</b></div><div><span class="label">Interest earned</span><b class="num pos">${usd(earn)}/mo</b></div></div></div></section>
-  <section class="card span2"><header><h2>Net worth over time</h2></header><div class="chart" id="nwChart"></div>${legend([['Net worth','var(--s1)'],['Assets','var(--s3)'],['Debt','var(--s2)']])}<div id="nwTable"></div></section>
+  ${VIEW?'':`<section class="card span2"><header><h2>Net worth over time</h2></header><div class="chart" id="nwChart"></div>${legend([['Net worth','var(--s1)'],['Assets','var(--s3)'],['Debt','var(--s2)']])}<div id="nwTable"></div></section>`}
   <section class="card span2"><header><h2>By owner</h2><span class="muted small">All accounts</span></header>${owners.map(o=>`<div class="catrow"><span class="small">${esc(o[0])}</span><div class="bar" title="${esc(o[0])}: ${usd(o[1])}"><i style="width:${o[1]/omax*100}%"></i></div><span class="num small">${usd(o[1])}</span></div>`).join('')}</section>
   ${grp('Cash and savings','cash')}${grp('Retirement and investing','invest')}${acc.some(a=>kindOf(a.type)==='card')?grp('Credit cards','card'):''}
   <section class="card span2"><header><h2>Add an account</h2></header><form class="inline" id="acctForm">
@@ -672,6 +689,7 @@ function vAccounts(){
    <p class="small muted" style="margin:10px 0 0">Balances move automatically when you pick the account on a Money entry, bill or debt payment. Type a new balance any time to match your bank. A credit card account counts what you owe as debt in your net worth, so do not also add the same card in Debts. Accounts marked "Emergency fund" feed the emergency savings number in Tips.</p></section></div>`;
 }
 function drawAccounts(){
+  if(!$('#nwChart'))return;
   const dmap=Object.fromEntries(S.history.map(h=>[h.m,h.total])),cmap=Object.fromEntries((S.cardHistory||[]).map(h=>[h.m,h.total]));
   const pts=S.acctHistory.filter(h=>h.m<MK&&dmap[h.m]!=null).map(h=>({m:h.m,a:h.total,d:dmap[h.m]+(cmap[h.m]||0)}));
   pts.push({m:MK,a:assetsTotal(),d:liabTotal()});
@@ -902,6 +920,7 @@ document.addEventListener('click',e=>{
     const sa=$('#txAcct'),has=[...sa.options].some(o=>o.value==='');
     if(tr&&has){sa.remove(0)}else if(!tr&&!has){sa.insertAdjacentHTML('afterbegin','<option value="">No account</option>');sa.value=lastAcct||''}
     return}
+  if(a==='setview'){VIEW=b.dataset.v;try{localStorage.setItem('familyBudget.view',VIEW)}catch(e){}return render()}
   if(a==='edittx'){editId=id;window.scrollTo(0,0);return render()}
   if(a==='canceledit'){editId=null;return render()}
   if(a==='syncup')confirmSetup();
