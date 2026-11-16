@@ -59,7 +59,7 @@ nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:v
 nav.tabs button{border:0;background:transparent;padding:8px 14px;border-radius:8px;font-weight:500;color:var(--muted);white-space:nowrap}
 nav.tabs button[aria-current="page"]{background:var(--ink);color:var(--bg)}
 .grid{display:grid;gap:12px;grid-template-columns:1fr}
-@media(min-width:760px){.grid.two{grid-template-columns:1fr 1fr}.span2{grid-column:span 2}}
+@media(min-width:760px){.grid.two{grid-template-columns:1fr 1fr}.span2,.grid.two .vbar{grid-column:span 2}}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .card header{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .hero{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-end;justify-content:space-between}
@@ -436,7 +436,7 @@ function txInView(x){if(!VIEW)return true;
 const billInView=b=>!VIEW||acctOwnerOf(b.acct)===VIEW;
 function viewBar(note){
   const opts=[['','Everyone'],['0',S.people[0]],['1',S.people[1]],['J','Joint']];
-  return `<div class="span2"><div class="seg wrap" role="group" aria-label="Show">${opts.map(o=>`<button data-act="setview" data-v="${o[0]}" aria-pressed="${VIEW===o[0]}">${esc(o[1])}</button>`).join('')}</div>${VIEW&&note?`<p class="small muted" style="margin:8px 0 0">${note}</p>`:''}</div>`;
+  return `<div class="vbar"><div class="seg wrap" role="group" aria-label="Show">${opts.map(o=>`<button data-act="setview" data-v="${o[0]}" aria-pressed="${VIEW===o[0]}">${esc(o[1])}</button>`).join('')}</div>${VIEW&&note?`<p class="small muted" style="margin:8px 0 0">${note}</p>`:''}</div>`;
 }
 let editId=null,lastAcct='';
 const acctLabel=a=>`${a.name} · ${ownerName(a.owner)}`;
